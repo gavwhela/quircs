@@ -242,7 +242,7 @@ fn otsu(q: &Quirc, image: &[u8]) -> u8 {
     // Compute threshold
     let mut sum_b: i32 = 0;
     let mut q1: i32 = 0;
-    let mut max: f64 = 0 as f64;
+    let mut max = I32F96::ZERO;
     let mut threshold: u8 = 0 as u8;
     for (i, val) in histogram.iter().enumerate() {
         // Weighted background
@@ -255,11 +255,15 @@ fn otsu(q: &Quirc, image: &[u8]) -> u8 {
         if q2 == 0 {
             break;
         }
+
+        let q1f = I32F96::from(q1);
+        let q2f = I32F96::from(q2);
+
         sum_b = (sum_b as u32).wrapping_add((i as u32).wrapping_mul(*val)) as i32 as i32;
-        let m1 = sum_b as f64 / q1 as f64;
-        let m2 = (sum as f64 - sum_b as f64) / q2 as f64;
+        let m1 = I32F96::from_num(sum_b) / q1f;
+        let m2 = (I32F96::from_num(sum) - I32F96::from(sum_b)) / q2f;
         let m1m2 = m1 - m2;
-        let variance = m1m2 * m1m2 * q1 as f64 * q2 as f64;
+        let variance = m1m2 * m1m2 * q1f * q2f;
         if variance >= max {
             threshold = i as u8;
             max = variance
