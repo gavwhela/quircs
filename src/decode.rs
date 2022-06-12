@@ -1,7 +1,7 @@
 #![allow(clippy::many_single_char_names)]
 
 use num_traits::{FromPrimitive, ToPrimitive};
-use std::convert::TryFrom;
+use core::convert::TryFrom;
 
 use crate::quirc::*;
 use crate::version_db::*;

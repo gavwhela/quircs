@@ -18,9 +18,13 @@ exclude = ["tests"]
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-num-derive = "0.3.0"
-num-traits = "0.2.11"
-thiserror = "1.0.19"
+num-derive = { version = "0.3.0", default-features = false }
+num-traits = { version = "0.2.11", default-features = false }
+ink_prelude = { version = "3.0.0-rc9", default-features = false }
+ink_env = { version = "3.0.0-rc9", default-features = false }
+ink_allocator = { version = "3.0.0-rc9", default-features = false }
+fixed = { version = "1.15.0", default-features = false }
+fixed-macro = { git = "https://github.com/kvinwang/fixed-macro", branch = "master", version = "1.1.1", default-features = false }
 
 [dev-dependencies]
 image = "0.23.4"

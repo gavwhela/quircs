@@ -23,6 +23,10 @@
 //! ```
 
 #![deny(clippy::all)]
+#![cfg_attr(not(feature = "std"), no_std)]
+
+extern crate ink_allocator;
+extern crate ink_env;
 
 mod decode;
 mod error;

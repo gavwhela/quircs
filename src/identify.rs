@@ -1,6 +1,10 @@
 #![allow(clippy::many_single_char_names)]
 
-use std::convert::TryFrom;
+use core::convert::TryFrom;
+use ink_prelude::vec::*;
+
+use fixed::types::I32F96;
+use fixed_macro::types::I32F96;
 
 use crate::error::ExtractError;
 use crate::quirc::*;
@@ -9,7 +13,7 @@ use crate::version_db::*;
 #[derive(Copy, Clone)]
 struct Neighbour {
     pub index: i32,
-    pub distance: f64,
+    pub distance: I32F96,
 }
 
 #[derive(Copy, Clone)]
@@ -57,18 +61,18 @@ fn line_intersect(p0: &Point, p1: &Point, q0: &Point, q1: &Point, r: &mut Point)
     1
 }
 
-fn perspective_setup(c: &mut [f64; 8], rect: &[Point; 4], w: f64, h: f64) {
-    let x0 = rect[0].x as f64;
-    let y0 = rect[0].y as f64;
-    let x1 = rect[1].x as f64;
-    let y1 = rect[1].y as f64;
-    let x2 = rect[2].x as f64;
-    let y2 = rect[2].y as f64;
-    let x3 = rect[3].x as f64;
-    let y3 = rect[3].y as f64;
+fn perspective_setup(c: &mut [I32F96; 8], rect: &[Point; 4], w: i32, h: i32) {
+    let x0 = I32F96::from(rect[0].x);
+    let y0 = I32F96::from(rect[0].y);
+    let x1 = I32F96::from(rect[1].x);
+    let y1 = I32F96::from(rect[1].y);
+    let x2 = I32F96::from(rect[2].x);
+    let y2 = I32F96::from(rect[2].y);
+    let x3 = I32F96::from(rect[3].x);
+    let y3 = I32F96::from(rect[3].y);
 
-    let wden = w * (x2 * y3 - x3 * y2 + (x3 - x2) * y1 + x1 * (y2 - y3));
-    let hden = h * (x2 * y3 + x1 * (y2 - y3) - x3 * y2 + (x3 - x2) * y1);
+    let wden = I32F96::from(w) * (x2 * y3 - x3 * y2 + (x3 - x2) * y1 + x1 * (y2 - y3));
+    let hden = I32F96::from(h) * (x2 * y3 + x1 * (y2 - y3) - x3 * y2 + (x3 - x2) * y1);
 
     c[0] = (x1 * (x2 * y3 - x3 * y2)
         + x0 * (-x2 * y3 + x3 * y2 + (x2 - x3) * y1)
@@ -91,18 +95,18 @@ fn perspective_setup(c: &mut [f64; 8], rect: &[Point; 4], w: f64, h: f64) {
     c[7] = (-x2 * y3 + x1 * y3 + x3 * y2 + x0 * (y1 - y2) - x3 * y1 + (x2 - x1) * y0) / hden;
 }
 
-fn perspective_map(c: &[f64; 8], u: f64, v: f64, ret: &mut Point) {
-    let den = c[6] * u + c[7] * v + 1.0f64;
+fn perspective_map(c: &[I32F96; 8], u: I32F96, v: I32F96, ret: &mut Point) {
+    let den = c[6] * u + c[7] * v + I32F96::ONE;
     let x = (c[0] * u + c[1] * v + c[2]) / den;
     let y = (c[3] * u + c[4] * v + c[5]) / den;
 
-    ret.x = x.round() as i32;
-    ret.y = y.round() as i32;
+    ret.x = x.round().to_num();
+    ret.y = y.round().to_num();
 }
 
-fn perspective_unmap(c: &[f64; 8], in_0: &Point, u: &mut f64, v: &mut f64) {
-    let x = in_0.x as f64;
-    let y = in_0.y as f64;
+fn perspective_unmap(c: &[I32F96; 8], in_0: &Point, u: &mut I32F96, v: &mut I32F96) {
+    let x = I32F96::from(in_0.x);
+    let y = I32F96::from(in_0.y);
 
     let den = -c[0] * c[7] * y + c[1] * c[6] * y + (c[3] * c[7] - c[4] * c[6]) * x + c[0] * c[4]
         - c[1] * c[3];
@@ -433,8 +437,8 @@ fn record_capstone(
     find_region_corners(image, region, ring, seed, &mut capstone.corners);
 
     /* Set up the perspective transform and find the center */
-    perspective_setup(&mut capstone.c, &capstone.corners, 7.0, 7.0);
-    perspective_map(&capstone.c, 3.5, 3.5, &mut capstone.center);
+    perspective_setup(&mut capstone.c, &capstone.corners, 7, 7);
+    perspective_map(&capstone.c, I32F96!(3.5), I32F96!(3.5), &mut capstone.center);
 }
 
 fn test_capstone(
@@ -537,8 +541,8 @@ fn find_alignment_pattern(
     let mut c = Point::default();
     let mut step_size = 1;
     let mut dir = 0;
-    let mut u = 0.;
-    let mut v = 0.;
+    let mut u = I32F96::ZERO;
+    let mut v = I32F96::ZERO;
 
     /* Grab our previous estimate of the alignment pattern corner */
     let mut b = qr.align;
@@ -547,9 +551,9 @@ fn find_alignment_pattern(
      * can estimate its size.
      */
     perspective_unmap(&c0.c, &b, &mut u, &mut v);
-    perspective_map(&c0.c, u, v + 1.0f64, &mut a);
+    perspective_map(&c0.c, u, v + I32F96::ONE, &mut a);
     perspective_unmap(&c2.c, &b, &mut u, &mut v);
-    perspective_map(&c2.c, u + 1.0f64, v, &mut c);
+    perspective_map(&c2.c, u + I32F96::ONE, v, &mut c);
     let size_estimate = ((a.x - b.x) * -(c.y - b.y) + (a.y - b.y) * (c.x - b.x)).abs();
 
     /* Spiral outwards from the estimate point until we find something
@@ -613,7 +617,7 @@ fn timing_scan(image: &Image<'_>, p0: &Point, p1: &Point) -> i32 {
     }
 
     let is_x_dom = if n.abs() > d.abs() {
-        std::mem::swap(&mut n, &mut d);
+        core::mem::swap(&mut n, &mut d);
         true
     } else {
         false
@@ -678,8 +682,8 @@ fn timing_scan(image: &Image<'_>, p0: &Point, p1: &Point) -> i32 {
 /// which is nearest the centre of the code. Using these points, we do
 /// a horizontal and a vertical timing scan.
 fn measure_timing_pattern(qr: &mut Grid, capstones: &[Capstone], image: &Image<'_>) -> i32 {
-    static US: [f64; 3] = [6.5, 6.5, 0.5];
-    static VS: [f64; 3] = [0.5, 6.5, 6.5];
+    static US: [I32F96; 3] = [I32F96!(6.5), I32F96!(6.5), I32F96!(0.5)];
+    static VS: [I32F96; 3] = [I32F96!(0.5), I32F96!(6.5), I32F96!(6.5)];
 
     for (i, (us, vs)) in US.iter().zip(VS.iter()).enumerate() {
         let cap = &capstones[qr.caps[i]];
@@ -716,7 +720,7 @@ fn read_cell(q: &Quirc, index: usize, x: i32, y: i32) -> i32 {
 
     let mut p = Point::default();
 
-    perspective_map(&qr.c, x as f64 + 0.5f64, y as f64 + 0.5f64, &mut p);
+    perspective_map(&qr.c, I32F96::from(x) + I32F96!(0.5), I32F96::from(y) + I32F96!(0.5), &mut p);
     if p.y < 0 || p.y >= q.h as i32 || p.x < 0 || p.x >= q.w as i32 {
         return 0;
     }
@@ -756,7 +760,7 @@ impl<'a> From<&'a ImageMut<'a>> for Image<'a> {
 }
 
 fn fitness_cell(qr: &Grid, image: &Image<'_>, x: i32, y: i32) -> i32 {
-    static OFFSETS: [f64; 3] = [0.3, 0.5, 0.7];
+    static OFFSETS: [I32F96; 3] = [I32F96!(0.3), I32F96!(0.5), I32F96!(0.7)];
 
     let mut score = 0;
     let mut p = Point::default();
@@ -764,7 +768,7 @@ fn fitness_cell(qr: &Grid, image: &Image<'_>, x: i32, y: i32) -> i32 {
     for v in &OFFSETS {
         for u in &OFFSETS {
             p.clear();
-            perspective_map(&qr.c, x as f64 + *u, y as f64 + *v, &mut p);
+            perspective_map(&qr.c, I32F96::from(x) + *u, I32F96::from(y) + *v, &mut p);
 
             if !(p.y < 0 || p.y >= image.height as i32 || p.x < 0 || p.x >= image.width as i32) {
                 if image.pixels[(p.y * image.width as i32 + p.x) as usize] != 0 {
@@ -856,10 +860,10 @@ fn fitness_all(qr: &Grid, image: &Image<'_>) -> i32 {
 
 fn jiggle_perspective(qr: &mut Grid, image: &Image<'_>) {
     let mut best = fitness_all(&qr, &image);
-    let mut adjustments: [f64; 8] = [0.; 8];
+    let mut adjustments: [I32F96; 8] = [I32F96::ZERO; 8];
 
     for (a_val, c_val) in adjustments.iter_mut().zip(qr.c.iter()) {
-        *a_val = c_val * 0.02;
+        *a_val = c_val * I32F96!(0.02);
     }
 
     for _pass in 0..5 {
@@ -878,7 +882,7 @@ fn jiggle_perspective(qr: &mut Grid, image: &Image<'_>) {
         }
 
         for val in &mut adjustments {
-            *val *= 0.5;
+            *val *= I32F96!(0.5);
         }
     }
 }
@@ -898,8 +902,8 @@ fn setup_qr_perspective(qr: &mut Grid, capstones: &[Capstone], image: &Image<'_>
     perspective_setup(
         &mut qr.c,
         &rect,
-        (qr.grid_size - 7) as f64,
-        (qr.grid_size - 7) as f64,
+        qr.grid_size - 7,
+        qr.grid_size - 7,
     );
 
     jiggle_perspective(qr, &image);
@@ -926,7 +930,7 @@ fn rotate_capstone(cap: &mut Capstone, h0: &Point, hd: &Point) {
     }
 
     cap.corners = copy;
-    perspective_setup(&mut cap.c, &cap.corners, 7.0, 7.0);
+    perspective_setup(&mut cap.c, &cap.corners, 7, 7);
 }
 
 fn record_qr_grid(
@@ -952,7 +956,7 @@ fn record_qr_grid(
 
     /* Make sure A-B-C is clockwise */
     if (capstones[b].center.x - h0.x) * -hd.y + (capstones[b].center.y - h0.y) * hd.x > 0 {
-        std::mem::swap(&mut a, &mut c);
+        core::mem::swap(&mut a, &mut c);
         hd.x = -hd.x;
         hd.y = -hd.y
     }
@@ -1066,16 +1070,16 @@ fn test_neighbours(
     hlist: &NeighbourList,
     vlist: &NeighbourList,
 ) {
-    let mut best_score = 0.0;
+    let mut best_score = I32F96::ZERO;
     let mut best_h = -1;
     let mut best_v = -1;
 
     /* Test each possible grouping */
     for hn in &hlist.n[..hlist.count] {
         for vn in &vlist.n[0..vlist.count] {
-            let score = (1.0 - hn.distance / vn.distance).abs();
+            let score = (I32F96::ONE - hn.distance / vn.distance).abs();
 
-            if score > 2.5 {
+            if score > I32F96!(2.5) {
                 continue;
             }
 
@@ -1112,14 +1116,14 @@ fn test_grouping(
     let mut hlist = NeighbourList {
         n: [Neighbour {
             index: 0,
-            distance: 0.,
+            distance: I32F96::ZERO,
         }; 32],
         count: 0,
     };
     let mut vlist = NeighbourList {
         n: [Neighbour {
             index: 0,
-            distance: 0.,
+            distance: I32F96::ZERO,
         }; 32],
         count: 0,
     };
@@ -1136,18 +1140,18 @@ fn test_grouping(
      */
     let c1c = capstones[i].c;
     for (j, c2) in capstones.iter_mut().enumerate() {
-        let mut u = 0.;
-        let mut v = 0.;
+        let mut u = I32F96::ZERO;
+        let mut v = I32F96::ZERO;
 
         if i as usize == j || c2.qr_grid >= 0 {
             continue;
         }
 
         perspective_unmap(&c1c, &c2.center, &mut u, &mut v);
-        u = (u - 3.5).abs();
-        v = (v - 3.5).abs();
+        u = (u - I32F96!(3.5)).abs();
+        v = (v - I32F96!(3.5)).abs();
 
-        if u < 0.2 * v {
+        if u < I32F96!(0.2) * v {
             let count = hlist.count as usize;
             hlist.count += 1;
             let n = &mut hlist.n[count];
@@ -1155,7 +1159,7 @@ fn test_grouping(
             n.distance = v;
         }
 
-        if v < 0.2 * u {
+        if v < I32F96!(0.2) * u {
             let count = vlist.count as usize;
             vlist.count += 1;
             let n = &mut vlist.n[count];
@@ -1235,15 +1239,15 @@ impl Quirc {
 
         let mut code = Code::default();
 
-        perspective_map(&qr.c, 0.0, 0.0, &mut code.corners[0]);
-        perspective_map(&qr.c, qr.grid_size as f64, 0.0, &mut code.corners[1]);
+        perspective_map(&qr.c, I32F96::ZERO, I32F96::ZERO, &mut code.corners[0]);
+        perspective_map(&qr.c, I32F96::from(qr.grid_size), I32F96::ZERO, &mut code.corners[1]);
         perspective_map(
             &qr.c,
-            qr.grid_size as f64,
-            qr.grid_size as f64,
+            qr.grid_size.into(),
+            qr.grid_size.into(),
             &mut code.corners[2],
         );
-        perspective_map(&qr.c, 0.0, qr.grid_size as f64, &mut code.corners[3]);
+        perspective_map(&qr.c, I32F96::ZERO, I32F96::from(qr.grid_size), &mut code.corners[3]);
         code.size = qr.grid_size;
 
         let mut i = 0;

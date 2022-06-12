@@ -1,25 +1,36 @@
-use thiserror::Error;
-
-#[derive(Debug, Error)]
+#[derive(Debug)]
 pub enum DecodeError {
-    #[error("Invalid grid size")]
     InvalidGridSize,
-    #[error("Invalid version")]
     InvalidVersion,
-    #[error("Format data ECC failure")]
     DataEcc,
-    #[error("ECC failure")]
     FormatEcc,
-    #[error("Unknown data type")]
-    UnkownDataType,
-    #[error("Data overflow")]
+    UnknownDataType,
     DataOverflow,
-    #[error("Data underflow")]
     DataUnderflow,
 }
 
-#[derive(Debug, Error)]
+impl core::fmt::Display for DecodeError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let x = match self {
+            DecodeError::InvalidGridSize => "Invalid grid size",
+            DecodeError::InvalidVersion => "Invalid version",
+            DecodeError::DataEcc => "Format data ECC failure",
+            DecodeError::FormatEcc => "ECC failure",
+            DecodeError::UnknownDataType => "Unknown data type",
+            DecodeError::DataOverflow => "Data overflow",
+            DecodeError::DataUnderflow => "Data underflow",
+        };
+        f.write_str(x)
+    }
+}
+
+#[derive(Debug)]
 pub enum ExtractError {
-    #[error("Out of bounds")]
     OutOfBounds,
+}
+
+impl core::fmt::Display for ExtractError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("OutOfBounds")
+    }
 }

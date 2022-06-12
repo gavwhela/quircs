@@ -1,4 +1,11 @@
 use num_derive::{FromPrimitive, ToPrimitive};
+use ink_prelude::vec::*;
+use ink_prelude::string::String;
+use ink_prelude::string::ToString;
+
+use fixed::*;
+use fixed::types::*;
+use fixed_macro::types::*;
 
 pub type Pixel = u16;
 
@@ -76,7 +83,7 @@ pub struct Grid {
     pub hscan: i32,
     pub vscan: i32,
     pub grid_size: i32,
-    pub c: [f64; 8],
+    pub c: [I32F96; 8],
 }
 
 #[derive(Debug, Copy, Clone, Default)]
@@ -98,7 +105,7 @@ pub struct Capstone {
     pub stone: i32,
     pub corners: [Point; 4],
     pub center: Point,
-    pub c: [f64; 8],
+    pub c: [I32F96; 8],
     pub qr_grid: i32,
 }
 
@@ -209,8 +216,8 @@ pub enum DataType {
     Kanji = 8,
 }
 
-impl std::fmt::Display for DataType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for DataType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let x = match self {
             DataType::Numeric => "numeric",
             DataType::Alpha => "alpha",
